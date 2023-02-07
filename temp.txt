@@ -1,0 +1,209 @@
+"""
+string GetStr(string sText)
+{
+	string tText;
+	unsigned char tmp; unsigned char tmp1;
+	for (unsigned int i = 0; i < sText.size(); i++)
+	{
+		tmp = sText[i];
+		tmp1 = sText[i + 1];
+		if (tmp == 163)
+		{
+			tText += (unsigned char)sText[i + 1] - 128;
+			i++;
+			continue;
+		}
+		else if (tmp > 163)
+		{
+			tText += sText.substr(i, 2);
+			i++;
+			continue;
+		}
+		else if (tmp == 161 && tmp1 == 161)
+		{
+			tText += "";
+			i++;
+		}
+		//波浪线全角半角需要特殊处理
+		else if (tmp == 161 && tmp1 == 171)
+		{
+			tText += 126;
+			i++;
+		}
+		else
+		{
+			tText += sText.substr(i, 1);
+		}
+	}
+	return tText;
+}
+ 
+bool FullStrToHalfstr(const string& strFullWidth, string& strHalfWidth)
+{
+	strHalfWidth.clear();
+	unsigned char tmp; unsigned char tmp1;
+	for (unsigned int i = 0; i < strFullWidth.length(); i++)
+	{
+		tmp = strFullWidth[i];
+		tmp1 = strFullWidth[i + 1];
+		if (tmp == 163)
+		{
+			strHalfWidth += (unsigned char)strFullWidth[i + 1] - 128;
+			i++;
+			continue;
+		}
+		else if (tmp > 163)
+		{
+			strHalfWidth += strFullWidth.substr(i, 2);
+			i++;
+			continue;
+		}
+		else if (tmp == 161 && tmp1 == 161)
+		{
+			strHalfWidth += "";
+			i++;
+		}
+		else
+		{
+			strHalfWidth += strFullWidth.substr(i, 1);
+		}
+	}
+	return true;
+}
+ 
+string ToDBS(string str) {
+	string result = "";
+	unsigned char tmp; unsigned char tmp1;
+	for (unsigned int i = 0; i < str.length(); i++) {
+		tmp = str[i];
+		tmp1 = str[i + 1];
+		if (tmp == 163) {///第一个字节是163，标志着是全角字符   
+			result += (unsigned char)str[i + 1] - 128;
+			i++;
+			continue;
+		}
+		else if (tmp > 163) {//汉字   
+			result += str.substr(i, 2);
+			i++;
+			continue;
+		}
+		else if (tmp == 161 && tmp1 == 161) {///处理全角空格   
+			result += "";
+			i++;
+		}
+		else if (tmp == 161 && tmp1 == 171) {///处理全角空格   
+			result += 126;
+			i++;
+		}
+		else {
+			result += str.substr(i, 1);
+		}
+	} return result;
+}
+
+bool IsTextUTF8(const std::string& str)
+{
+	char nBytes=0;//UFT8可用1-6个字节编码,ASCII用一个字节
+	unsigned char chr;
+	bool bAllAscii = true; //如果全部都是ASCII, 说明不是UTF-8
+ 
+	for(int i=0; i < str.length();i++)
+	{
+		chr = str[i];
+		
+		// 判断是否ASCII编码,如果不是,说明有可能是UTF-8,ASCII用7位编码,
+		// 但用一个字节存,最高位标记为0,o0xxxxxxx
+		if( (chr&0x80) != 0 )
+			bAllAscii= false;
+ 
+		if(nBytes==0) //如果不是ASCII码,应该是多字节符,计算字节数
+		{
+			if(chr>=0x80)
+			{
+				if(chr>=0xFC&&chr<=0xFD)   nBytes=6;
+				else if(chr>=0xF8)         nBytes=5;
+				else if(chr>=0xF0)         nBytes=4;
+				else if(chr>=0xE0)         nBytes=3;
+				else if(chr>=0xC0)         nBytes=2;
+				else{
+					return false;
+				}
+				nBytes--;
+			}
+		}
+		else //多字节符的非首字节,应为 10xxxxxx
+		{
+			if( (chr&0xC0) != 0x80 ){
+				return false;
+			}
+			nBytes--;
+		}
+	}
+ 
+	if( nBytes > 0 ) //违返规则
+		return false;
+	
+	if( bAllAscii ) //如果全部都是ASCII, 说明不是UTF-8
+		return false;
+	
+	return true;
+}
+/*
+std::string UTF8ToString(const std::string& utf8Data)
+{
+    std::wstring_convert<std::codecvt_utf8<wchar_t>> conv;
+    std::wstring wString = conv.from_bytes(utf8Data);    // utf-8 => wstring
+
+    std::wstring_convert<std::codecvt< wchar_t, char, std::mbstate_t>>
+        convert(new std::codecvt< wchar_t, char, std::mbstate_t>("CHS"));
+    std::string str = convert.to_bytes(wString);     // wstring => string
+
+    return str;
+}
+*/
+
+/*
+*日期：2019.10.16
+*功能：多字符转16进制字符串（utf-8）
+*参数说明：
+          cGbk[in]：多字符数组（gbk）
+		  cUtf8[out]：十六进制字符串（utf-8）
+*返回值：
+*/
+void GBKToUTF8(const char* cGbk, char* cUtf8)
+{
+	int len = MultiByteToWideChar(936, 0, cGbk, -1, NULL, 0);
+	wchar_t* wstr = new wchar_t[len+1];
+	memset(wstr, 0, len+1);
+	MultiByteToWideChar(936, 0, cGbk, -1, wstr, len);
+
+	len = WideCharToMultiByte(CP_UTF8, 0, wstr, -1, NULL, 0, NULL, NULL);
+	WideCharToMultiByte(CP_UTF8, 0, wstr, -1, cUtf8, len, NULL, NULL);
+
+	delete[] wstr;
+}
+
+/*
+*日期：2019.10.16
+*功能：宽字符转多字符
+*参数说明：
+          cUtf8[in]：utf-8十六进制数组
+		  cGbk[out]：多字节字符串（gbk）
+*返回值：
+*/
+char* UTF8ToGBK(const char* cUtf8)
+{
+	char* cGbk;
+	int len = MultiByteToWideChar(CP_UTF8, 0, cUtf8, -1, NULL, 0);
+	wchar_t* wstr = new wchar_t[len+1];
+	memset(wstr, 0, len+1);
+	MultiByteToWideChar(CP_UTF8, 0, cUtf8, -1, wstr, len);
+  cout<<"114";
+	len = WideCharToMultiByte(936, 0, wstr, -1, NULL, 0, NULL, NULL);
+  cout<<"514";
+	WideCharToMultiByte(936, 0, wstr, -1, cGbk, len, NULL, NULL);
+  cout<<"666"<<endl;
+
+	delete[] wstr;
+	return cGbk;
+}
